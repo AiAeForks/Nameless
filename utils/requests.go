@@ -30,5 +30,5 @@ func GetIpFromRequest(c *gin.Context) string {
 		return ip.String()
 	}
 
-	return ""
+	return "::1"
 }
