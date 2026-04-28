@@ -9,35 +9,26 @@ import (
 
 // GetIpFromRequest Gets the client's proper ip address from a request.
 func GetIpFromRequest(c *gin.Context) string {
-	headers := []string{
-		"CF-Connecting-IP",
-		"X-Real-IP",
+	if ip := net.ParseIP(strings.TrimSpace(c.GetHeader("CF-Connecting-IP"))); ip != nil {
+		return ip.String()
 	}
 
-	for _, h := range headers {
-		if ip := strings.TrimSpace(c.GetHeader(h)); ip != "" {
-			if parsed := net.ParseIP(ip); parsed != nil {
-				return parsed.String()
+	if ip := net.ParseIP(strings.TrimSpace(c.GetHeader("X-Real-IP"))); ip != nil {
+		return ip.String()
+	}
+
+	if xff := c.GetHeader("X-Forwarded-For"); xff != "" {
+		for _, part := range strings.Split(xff, ",") {
+			if ip := net.ParseIP(strings.TrimSpace(part)); ip != nil {
+				return ip.String()
 			}
 		}
 	}
 
-	if xff := c.GetHeader("X-Forwarded-For"); xff != "" {
-		ip := strings.TrimSpace(strings.Split(xff, ",")[0])
-		if parsed := net.ParseIP(ip); parsed != nil {
-			return parsed.String()
-		}
+	host, _, _ := net.SplitHostPort(c.Request.RemoteAddr)
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.String()
 	}
 
-	if host, _, err := net.SplitHostPort(strings.TrimSpace(c.Request.RemoteAddr)); err == nil {
-		if parsed := net.ParseIP(host); parsed != nil {
-			return parsed.String()
-		}
-	}
-
-	if parsed := net.ParseIP(strings.TrimSpace(c.Request.RemoteAddr)); parsed != nil {
-		return parsed.String()
-	}
-
-	return "::1"
+	return ""
 }
